@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Document</title>
+  </head>
+  <body>
+    <div class="w-full flex flex-col items-center space-y-10 pt-4">
+      <div
+        class="m-auto p-5 flex flex-col items-center space-y-4 bg-gray-200 p-2 rounded-md"
+      >
+        <span>id : <%= id %></span>
+        <span>user name : <%= name %></span>
+
+        <span>provider: <%= provider %></span>
+
+        <div>photo : <img src=" <%= photo %>" alt="" /></div>
+        <span>email: <%= email %></span>
+      </div>
+      <div>
+        <a
+          href="/logout"
+          class="px-6 py-2 rounded-full bg-red-400 text-white hover:bg-red-500"
+          >Log Out</a
+        >
+      </div>
+    </div>
+  </body>
+</html>
