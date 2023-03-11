@@ -85,7 +85,7 @@ function requireAuth(req, res, next) {
 
 app.get('/', requireAuth, (req, res) => {
   const user = req.user;
-  res.send("Welcome",user.name);
+  res.redirect('/profile');
 });
 
 
