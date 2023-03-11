@@ -19,7 +19,7 @@ app.get('/google', (req, res) => {
   const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   req.session.state = state;
 
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${process.env.GOOGLE_CLIEN_ID}&redirect_uri=${process.env.GOOGLE_REDIRECT_URI}&scope=openid%20profile%20email&state=${state}`;
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${process.env.GOOGLE_CLIEN_ID}&redirect_uri=${process.env.GOOGLE_REDIRECT_URI}&scope=openid%20profile%20email&state=${state}&access_type=offline&prompt=consent`; //&access_type=offline is for refresh token
   res.redirect(url);
 });
 
@@ -50,7 +50,9 @@ app.get('/google/callback', async (req, res) => {
     const response = await requestPromise(options);
     const accessToken = response.access_token;
     const idToken = response.id_token;
-
+    const refreshToken = response.refresh_token; // Save this for later
+    console.log("refreshToken",refreshToken);
+    console.log("accessToken",accessToken);  
     // Decode ID token to get user information
     const base64Url = idToken.split('.')[1];
     const base64 = base64Url.replace('-', '+').replace('_', '/');
