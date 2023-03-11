@@ -1,62 +1,107 @@
 require("dotenv").config();
-const express = require("express");
-const passport = require("passport");
-const session = require("express-session");
+const express = require('express');
+const session = require('express-session');
+const requestPromise = require('request-promise');
 
 const app = express();
 
-require("./Passport");
-
 app.set("view engine", "ejs");
-app.use(
-  session({
-    secret: "my-secret-key",
-    resave: false,
-    saveUninitialized: true,
-  })
-);
-app.use(passport.initialize());
-app.use(passport.session());
 
-app.get("/", (req, res) => {
-  res.render("pages/index");
+// Set up session middleware
+app.use(session({
+  secret: 'mysecret',
+  resave: true,
+  saveUninitialized: true
+}));
+
+// Google authentication routes
+app.get('/google', (req, res) => {
+  const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  req.session.state = state;
+
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${process.env.GOOGLE_CLIEN_ID}&redirect_uri=${process.env.GOOGLE_REDIRECT_URI}&scope=openid%20profile%20email&state=${state}`;
+  res.redirect(url);
 });
 
-app.get("/success", (req, res) =>
-  res.render("pages/profile.ejs", {
-    name: req.user.displayName,
-    email: req.user.emails[0].value,
-    photo: req.user.photos[0].value,
-    id: req.user.id,
-    provider: req.user.provider,
-    profileUrl: req.user.profileUrl,
-  })
-);
+app.get('/google/callback', async (req, res) => {
+  const code = req.query.code;
+  const state = req.query.state;
+  const savedState = req.session.state;
 
-app.get(
-  "/google",
-  passport.authenticate("google", { scope: ["email", "profile"] }) // scope is used to specify what data we want to get from the user
-);
-
-app.get(
-  "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/failed" }),
-  function (req, res) {
-    // Successful authentication, redirect home.
-    res.redirect("/success");
+  if (state !== savedState) {
+    res.status(401).send('Invalid state parameter');
+    return;
   }
-);
 
-app.get("/logout", (req, res) => {
-  req.session.destroy(function (err) {
-    res.redirect("/"); //Inside a callback… bulletproof!
-  });
+  try {
+    // Exchange code for access token
+    const options = {
+      method: 'POST',
+      uri: 'https://oauth2.googleapis.com/token',
+      form: {
+        code: code,
+        client_id: process.env.GOOGLE_CLIEN_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code'
+      },
+      json: true
+    };
+    const response = await requestPromise(options);
+    const accessToken = response.access_token;
+    const idToken = response.id_token;
+
+    // Decode ID token to get user information
+    const base64Url = idToken.split('.')[1];
+    const base64 = base64Url.replace('-', '+').replace('_', '/');
+    const decoded = Buffer.from(base64, 'base64').toString('utf8');
+    const user = JSON.parse(decoded);
+
+    // Set user information in session
+    req.session.user = user;
+    res.redirect('/profile');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
 });
 
-app.get("/failed", (req, res) => {
-  res.send("You Failed to log in!");
+app.get('/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/');
 });
+
+
+function requireAuth(req, res, next) {
+  if (req.session.user) {
+    req.user = req.session.user;
+    next();
+  } else {
+    res.render("pages/index");
+  }
+}
+
+app.get('/', requireAuth, (req, res) => {
+  const user = req.user;
+  res.send("Welcome",user.name);
+});
+
+
+app.get('/profile', requireAuth, (req, res) => {
+  const user = req.user;
+  res.render("pages/profile.ejs", {
+    name: user.name,
+    email: user.email,
+    photo: user.picture,
+    id:  user.sub,
+    provider: user.iss,
+  })
+});
+
+
 
 app.listen(4000, () => {
-  console.log("Server Running on port 4000");
+  console.log('Server started on port 4000');
 });
+
+
