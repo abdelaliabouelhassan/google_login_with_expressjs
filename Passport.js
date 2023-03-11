@@ -12,10 +12,13 @@ passport.use(new GoogleStrategy({
 clientID: process.env.GOOGLE_CLIEN_ID , // Your Credentials here.
 clientSecret: process.env.GOOGLE_CLIENT_SECRET, // Your Credentials here.
 callbackURL: process.env.GOOGLE_REDIRECT_URI, // add this to your .env file and set it to http://localhost:4000/google/callback (or whatever port you are using) 
-passReqToCallback:true
+//passReqToCallback:true,
+accessType: 'offline',// 'online' (default) or 'offline' (gets refresh_token)
 },
 function(request, accessToken, refreshToken, profile, done) {
-console.log(profile);    
+console.log(profile); 
+console.log("accessToken: ", accessToken); 
+console.log("refreshToken: ", refreshToken);  
 return done(null, profile);
 }
 ));
